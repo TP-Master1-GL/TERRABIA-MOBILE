@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
+from datetime import timedelta
 
 from pathlib import Path
 
@@ -38,7 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'corsheaders',
+    #'corsheaders',
     'users',
     'products',
     'orders',
@@ -139,3 +140,13 @@ REST_FRAMEWORK = {
 
 # CORS (à ajuster plus tard en prod)
 CORS_ALLOW_ALL_ORIGINS = True  # À désactiver en production
+
+AUTH_USER_MODEL = 'users.User'
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(hours=2),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
