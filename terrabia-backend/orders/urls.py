@@ -1,15 +1,19 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import RatingViewSet, cart_view, checkout, my_orders, available_orders, accept_order
-
-router = DefaultRouter()
-router.register(r'ratings', RatingViewSet)
+from django.urls import path
+from . import views
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('cart/', cart_view, name='cart'),
-    path('checkout/', checkout, name='checkout'),
-    path('my-orders/', my_orders, name='my-orders'),
-    path('delivery/available/', available_orders, name='available'),
-    path('delivery/accept/<int:order_id>/', accept_order, name='accept'),
+    # 🛒 Gestion du panier
+    path('cart/', views.CartDetailView.as_view(), name='cart-detail'),
+    path('cart/add/', views.AddToCartView.as_view(), name='add-to-cart'),
+    path('cart/items/<int:pk>/', views.UpdateCartItemView.as_view(), name='update-cart-item'),
+    path('cart/items/<int:pk>/remove/', views.RemoveFromCartView.as_view(), name='remove-cart-item'),
+    
+    # 📦 Gestion des commandes
+    path('orders/', views.OrderListView.as_view(), name='order-list'),
+    path('orders/<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
+    path('orders/history/', views.OrderHistoryView.as_view(), name='order-history'),
+    
+    # ⭐ Gestion des avis
+    path('reviews/', views.ReviewCreateView.as_view(), name='review-create'),
+    path('reviews/my/', views.UserReviewsView.as_view(), name='user-reviews'),
 ]

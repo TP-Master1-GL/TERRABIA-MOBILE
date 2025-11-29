@@ -1,14 +1,21 @@
-# users/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import UserViewSet
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-
-router = DefaultRouter()
-router.register(r'', UserViewSet)
+from django.urls import path
+from . import views
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
-    path('', include(router.urls)),
-    path('login/', TokenObtainPairView.as_view(), name='login'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='refresh'),
+    # 🔐 Authentification
+    path('register/', views.UserRegistrationView.as_view(), name='register'),
+    path('login/', views.UserLoginView.as_view(), name='login'),
+    path('verify/', views.verify_token, name='verify-token'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    
+    # 👥 Gestion des utilisateurs
+    path('users/', views.UserListView.as_view(), name='user-list'),
+    path('users/<pk>/', views.UserDetailView.as_view(), name='user-detail'),
+    path('users/me/', views.UserDetailView.as_view(), name='user-me'),
+    
+    # 📋 Gestion des profils
+    path('profile/farmer/', views.FarmerProfileView.as_view(), name='farmer-profile'),
+    path('profile/buyer/', views.BuyerProfileView.as_view(), name='buyer-profile'),
+    path('profile/delivery/', views.DeliveryProfileView.as_view(), name='delivery-profile'),
 ]

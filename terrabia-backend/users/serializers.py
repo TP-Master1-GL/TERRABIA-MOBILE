@@ -1,28 +1,67 @@
-# users/serializers.py
 from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password
-from .models import User
+from django.contrib.auth import authenticate
+from .models import User, FarmerProfile, BuyerProfile, DeliveryProfile
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password2 = serializers.CharField(write_only=True)
-
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+    
     class Meta:
         model = User
-        fields = ('username', 'email', 'password', 'password2', 'first_name', 'last_name', 'phone', 'user_type')
-
+        fields = ('username', 'email', 'password', 'password_confirm', 
+                 'user_type', 'phone_number', 'first_name', 'last_name')
+    
     def validate(self, attrs):
-        if attrs['password'] != attrs['password2']:
-            raise serializers.ValidationError({"password": "Les mots de passe ne correspondent pas"})
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError("Les mots de passe ne correspondent pas")
         return attrs
-
+    
     def create(self, validated_data):
-        validated_data.pop('password2')
+        validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
         return user
+
+class UserLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+    
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if not user:
+                raise serializers.ValidationError('Identifiants invalides')
+        else:
+            raise serializers.ValidationError('Must include "username" and "password"')
+        
+        attrs['user'] = user
+        return attrs
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'first_name', 'last_name', 'phone',
-                  'user_type', 'address', 'profile_picture', 'is_verified', 'date_joined')
-        read_only_fields = ('id', 'date_joined')
+        fields = ('id', 'username', 'email', 'user_type', 'phone_number', 
+                 'first_name', 'last_name', 'is_verified', 'date_joined')
+
+class FarmerProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = FarmerProfile
+        fields = '__all__'
+
+class BuyerProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = BuyerProfile
+        fields = '__all__'
+
+class DeliveryProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = DeliveryProfile
+        fields = '__all__'

@@ -1,53 +1,80 @@
 from django.db import models
-from users.models import User
+from django.contrib.auth import get_user_model
 
-class Cart(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
-    quantity = models.PositiveIntegerField(default=1)
-
-    class Meta:
-        unique_together = ('cart', 'product')
+User = get_user_model()
 
 class Order(models.Model):
-    STATUS_CHOICES = (
+    ORDER_STATUS_CHOICES = (
         ('pending', 'En attente'),
         ('confirmed', 'Confirmée'),
-        ('waiting_delivery', 'En attente de livraison'),
-        ('taken', 'Prise en charge'),
-        ('in_delivery', 'En livraison'),
+        ('preparing', 'En préparation'),
+        ('ready', 'Prête pour livraison'),
+        ('shipped', 'Expédiée'),
         ('delivered', 'Livrée'),
         ('cancelled', 'Annulée'),
     )
-
+    
     buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
-    delivery_agency = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                        related_name='delivered_orders', limit_choices_to={'user_type': 'delivery_agency'})
-    assigned_agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
-                                       related_name='assigned_deliveries', limit_choices_to={'user_type': 'delivery_agent'})
-
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    delivery_address = models.TextField()
+    farmer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='farmer_orders')
+    delivery_agent = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='delivery_orders')
+    
+    status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default='pending')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    shipping_address = models.TextField()
+    delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Commande #{self.id} - {self.buyer.username}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    @property
+    def total_price(self):
+        return self.quantity * self.unit_price
 
-class ProductRating(models.Model):
-    product = models.ForeignKey('products.Product', on_delete=models.CASCADE, related_name='ratings')
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    rating = models.PositiveSmallIntegerField(choices=[(i,i) for i in range(1,6)])
+class Cart(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Panier de {self.user.username}"
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey('products.Product', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product.name}"
+
+class Review(models.Model):
+    RATING_CHOICES = (
+        (1, '1 étoile'),
+        (2, '2 étoiles'),
+        (3, '3 étoiles'),
+        (4, '4 étoiles'),
+        (5, '5 étoiles'),
+    )
+    
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='review')
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
+    reviewed_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES)
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    
     class Meta:
-        unique_together = ('product', 'user')
+        unique_together = ('order', 'reviewer')
+
+    def __str__(self):
+        return f"Avis de {self.reviewer.username} pour {self.reviewed_user.username}"
