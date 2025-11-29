@@ -1,42 +1,67 @@
-# users/serializers.py
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from django.contrib.auth.password_validation import validate_password
-from django.core import exceptions
-import django.contrib.auth.password_validation as validators
+from django.contrib.auth import authenticate
+from .models import User, FarmerProfile, BuyerProfile, DeliveryProfile
 
-User = get_user_model()
-
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password2 = serializers.CharField(write_only=True)
-
+class UserRegistrationSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+    
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'role', 'password', 'password2']
-
-    def validate(self, data):
-        if data['password'] != data['password2']:
+        fields = ('username', 'email', 'password', 'password_confirm', 
+                 'user_type', 'phone_number', 'first_name', 'last_name')
+    
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError("Les mots de passe ne correspondent pas")
-        return data
-
+        return attrs
+    
     def create(self, validated_data):
-        validated_data.pop('password2')
+        validated_data.pop('password_confirm')
         user = User.objects.create_user(**validated_data)
-        user.set_password(validated_data['password'])
-        user.save()
         return user
 
+class UserLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+    
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            if not user:
+                raise serializers.ValidationError('Identifiants invalides')
+        else:
+            raise serializers.ValidationError('Must include "username" and "password"')
+        
+        attrs['user'] = user
+        return attrs
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 
-                  'phone', 'role', 'address', 'avatar', 'is_verified', 'created_at']
-        read_only_fields = ['is_verified', 'created_at']
+        fields = ('id', 'username', 'email', 'user_type', 'phone_number', 
+                 'first_name', 'last_name', 'is_verified', 'date_joined')
 
-
-class ProfileUpdateSerializer(serializers.ModelSerializer):
+class FarmerProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
     class Meta:
-        model = User
-        fields = ['first_name', 'last_name', 'phone', 'address', 'avatar']
+        model = FarmerProfile
+        fields = '__all__'
+
+class BuyerProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = BuyerProfile
+        fields = '__all__'
+
+class DeliveryProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = DeliveryProfile
+        fields = '__all__'
