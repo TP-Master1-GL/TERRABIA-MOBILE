@@ -4,6 +4,9 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticate
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import api_view, permission_classes
 
 # Permission personnalisée : seul le farmer peut modifier ses produits
 class IsOwnerOrReadOnly(BasePermission):
@@ -72,9 +75,51 @@ class ProductListCreateView(generics.ListCreateAPIView):
     ordering_fields = ['price', 'created_at']
 
     def perform_create(self, serializer):
-        serializer.save(farmer=self.request.user)
+        # Vérifier que l'utilisateur a un profil farmer
+        if not hasattr(self.request.user, 'farmer_profile'):
+            return Response(
+                {"error": "Seuls les agriculteurs peuvent créer des produits"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        serializer.save(farmer=self.request.user.farmer_profile)
 
 class ProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [IsOwnerOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAuthenticated()]
+        return [IsAuthenticatedOrReadOnly()]
+
+# Vue pour récupérer les produits du farmer connecté
+from rest_framework.decorators import api_view
+
+@api_view(['GET'])
+def my_products(request):
+    if not hasattr(request.user, 'farmer_profile'):
+        return Response([])
+    
+    products = Product.objects.filter(farmer=request.user.farmer_profile)
+    serializer = ProductSerializer(products, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def toggle_favorite(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.user in product.favorited_by.all():
+        product.favorited_by.remove(request.user)
+        is_favorite = False
+    else:
+        product.favorited_by.add(request.user)
+        is_favorite = True
+    
+    return Response({
+        'success': True,
+        'is_favorite': is_favorite,
+        'product_id': product_id
+    })

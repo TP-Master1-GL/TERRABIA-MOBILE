@@ -10,4 +10,7 @@ urlpatterns = [
     # Produits - URLs inchangées
     path('products/', views.ProductListCreateView.as_view(), name='product-list-create'),
     path('products/<int:pk>/', views.ProductDetailView.as_view(), name='product-detail'),
+    path('favorites/', ProductViewSet.as_view({'get': 'favorites'}), name='favorites'),
+    path('my-products/', views.my_products, name='my-products'), 
+    
 ]
