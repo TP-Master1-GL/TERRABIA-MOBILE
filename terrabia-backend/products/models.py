@@ -43,6 +43,9 @@ class Product(models.Model):
     available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    # Ajout du champ pour les favoris
+    favorited_by = models.ManyToManyField(User, related_name='favorite_products', blank=True)
 
     class Meta:
         ordering = ['-created_at']
