@@ -80,7 +80,8 @@ def toggle_favorite(request, product_id):
         'success': True,
         'is_favorite': is_favorite,
         'product_id': product_id
-    })# products/views.py
+    })
+# products/views.py
 from rest_framework import generics, filters, status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response

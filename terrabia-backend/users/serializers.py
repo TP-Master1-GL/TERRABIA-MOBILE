@@ -22,19 +22,26 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class UserLoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.CharField()
     password = serializers.CharField()
     
     def validate(self, attrs):
-        username = attrs.get('username')
+        email = attrs.get('email')
         password = attrs.get('password')
         
-        if username and password:
-            user = authenticate(username=username, password=password)
+        if email and password:
+            # First, try to get the user by email
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                raise serializers.ValidationError('Identifiants invalides')
+            
+            # Then authenticate with username and password
+            user = authenticate(username=user.username, password=password)
             if not user:
                 raise serializers.ValidationError('Identifiants invalides')
         else:
-            raise serializers.ValidationError('Must include "username" and "password"')
+            raise serializers.ValidationError('Must include "email" and "password"')
         
         attrs['user'] = user
         return attrs

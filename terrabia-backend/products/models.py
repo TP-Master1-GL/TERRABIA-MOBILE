@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
+import uuid
 
 User = get_user_model()
 
@@ -16,7 +17,25 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            # Générer un slug de base
+            base_slug = slugify(self.name)
+            slug = base_slug
+            
+            # Vérifier si le slug existe déjà
+            counter = 1
+            while Category.objects.filter(slug=slug).exclude(id=self.id).exists():
+                # Ajouter un identifiant unique si le slug existe
+                slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
+                counter += 1
+                
+                # Limiter les tentatives
+                if counter > 10:
+                    # Fallback avec UUID complet
+                    slug = f"{base_slug}-{uuid.uuid4().hex}"
+                    break
+            
+            self.slug = slug
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
